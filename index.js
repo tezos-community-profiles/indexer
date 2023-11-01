@@ -60,6 +60,8 @@ async function sync_tcp() {
   console.log('fullsync results', results)
 }
 
+/** SCRAPE LOOP **/
+
 async function scrape_loop() {
   console.log('-------')
   try {
