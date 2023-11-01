@@ -8,5 +8,10 @@
     "start": "node index.js"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@taquito/utils": "^17.3.2",
+    "node-fetch": "^3.3.2",
+    "tiny-env-config": "^1.0.0"
+  }
 }
