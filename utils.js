@@ -1,3 +1,4 @@
+import pg from 'pg'
 import fetch from 'node-fetch'
 import {
   IPFS_ENDPOINT,

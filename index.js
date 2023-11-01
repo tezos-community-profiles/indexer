@@ -36,8 +36,8 @@ async function update_key(key) {
   try {
     const address = key.key
     const profile = bytes2Char(key.value[''])
-    const profile_data = await get_ipfs_metadata(profile) 
-    console.log(address, profile)
+    const [protocol, hash] = profile.split('://')
+    const profile_data = await get_ipfs_metadata(hash) 
   } catch(e) {
     throw new Error(`Unable to update key: ${key?.key}\n${e.message}`)
   }
