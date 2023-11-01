@@ -60,7 +60,7 @@ async function sync_tcp() {
   console.log('fullsync results', results)
 }
 
-async function scrap_loop() {
+async function scrape_loop() {
   console.log('-------')
   try {
     await sync_tcp() 
@@ -68,7 +68,7 @@ async function scrap_loop() {
     console.error(e)
 //    Sentry.captureException(e)
   }
-  setTimeout(scrap_loop, SCRAPE_INTERVAL)
+  setTimeout(scrape_loop, SCRAPE_INTERVAL)
 }
 
-scrap_loop()
+scrape_loop()
