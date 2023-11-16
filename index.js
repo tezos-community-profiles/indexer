@@ -1,10 +1,6 @@
 import util from 'util'
 import fetch from 'node-fetch'
-//import ohash from 'object-hash'
-//import Sentry from '@sentry/node'
-//import { promises as fs } from 'fs'
 import { bytes2Char } from '@taquito/utils'
-//import { Parser, unpackDataBytes } from '@taquito/michel-codec'
 import {
   TZKT_API,
   BATCH_SIZE,

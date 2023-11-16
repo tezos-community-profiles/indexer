@@ -4,3 +4,9 @@ CREATE TABLE IF NOT EXISTS profiles (
   time_created  bigint default extract(epoch from now())*1000,
   metadata      jsonb
 );
+
+/* Config table for storing `last_level_synced` */
+
+CREATE TABLE IF NOT EXISTS config (
+  config json
+);
