@@ -8,17 +8,20 @@ import { bytes2Char } from '@taquito/utils'
 import {
   TZKT_API,
   BATCH_SIZE,
+  INDEX_KEYS,
   TCP_CONTRACT,
   IPFS_ENDPOINT,
   SCRAPE_INTERVAL,
 } from './config.js'
 import { 
+  get_client,
   get_ipfs_metadata 
 } from './utils.js'
 //import './sentry.js'
 
 /** HELPERS **/
 
+let global_client= null
 const debug = util.debuglog('TCP_API')
 
 async function calc_batches() {
@@ -36,16 +39,38 @@ async function calc_batches() {
   return batches
 }
 
+function debug_log_result_maybe(fulfilled, rejected) {
+  const fulfilled_addresses = fulfilled.map(v => `OK: ${v.value.address} ${Object.keys(v.value).join(',')}`).join('\n')
+  debug('\n'+fulfilled_addresses)
+  const rejected_addresses = rejected.map(v => `ERROR: ${v.reason.message.split('\n')[0]}`).join('\n')
+  debug('\n'+rejected_addresses)
+}
+
+async function store_profile(profile) {
+  // Add created, updated
+  await global_client.query(`
+    insert into profiles (address, metadata) values ($1, $2)
+    on conflict on constraint profiles_pkey
+    do update set metadata=$2, time_updated=$3
+  `, [profile.address, profile, new Date().getTime()]) 
+}
+
 async function update_key(key) {
   try {
     const address = key.key
-    const profile = bytes2Char(key.value[''])
-    const [protocol, hash] = profile.split('://')
-    const profile_data = await get_ipfs_metadata(hash) 
-    // TODO: Update database
-    return { address, profile }
+    const values = {}
+    for (let ikey of INDEX_KEYS) {
+      if (!key.value[ikey]) continue
+      const char = bytes2Char(key.value[ikey])
+      const [protocol, hash] = char.split('://')
+      const data = await get_ipfs_metadata(hash) // TODO: Support more protocols 
+      values[ikey] = data
+    }
+    const profile = { address, ...values }
+    await store_profile(profile)
+    return profile
   } catch(e) {
-    throw new Error(`Unable to update key: ${key?.key}\n${e.message}`)
+    throw new Error(`Unable to update key: ${key?.key} ${e.message}`)
   }
 }
 
@@ -66,20 +91,22 @@ async function sync_tcp() {
   const fulfilled = all_res.filter(r => r.status == 'fulfilled')
   const rejected = all_res.filter(r => r.status == 'rejected')
   console.log(`Successful updates: ${fulfilled.length}`)
-  const fulfilled_addresses = fulfilled.map(v => v.value.address).join('\n')
-  debug(fulfilled_addresses)
   console.log(`Rejected updates: ${rejected.length}`)
-  const rejected_addresses = rejected.map(v => v.reason.message.split('\n')[0].split(': ')[1]).join('\n')
-  debug(rejected_addresses)
+  debug_log_result_maybe(fulfilled, rejected)
 }
 
 /** SCRAPE LOOP **/
 
 async function scrape_loop() {
   console.log('-------')
+  const client = get_client()
   try {
-    await sync_tcp() 
+    await client.connect()
+    global_client = client
+    await sync_tcp(client)
+    await client.end()
   } catch(e) {
+    await client.end()
     console.error(e)
 //    Sentry.captureException(e)
   }
