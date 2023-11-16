@@ -26,5 +26,6 @@ npm start
 Missing stuff.
 
 * Keep track of last_level_synced and only sync new items (waiting to tzkt to possibly add required /count endpoint)
+* Support onchfs://
 
 enjoy.
