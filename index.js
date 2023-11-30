@@ -45,9 +45,9 @@ function debug_log_result_maybe(fulfilled, rejected) {
 async function store_profile(profile) {
   // Add created, updated
   await global_client.query(`
-    insert into profiles (address, metadata) values ($1, $2)
+    insert into profiles (address, data) values ($1, $2)
     on conflict on constraint profiles_pkey
-    do update set metadata=$2, time_updated=$3
+    do update set data=$2, time_updated=$3
   `, [profile.address, profile, new Date().getTime()]) 
 }
 
