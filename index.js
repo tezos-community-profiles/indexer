@@ -18,7 +18,7 @@ import {
 /** HELPERS **/
 
 let global_client= null
-const debug = util.debuglog('TCP_API')
+const debug = util.debuglog('TCP_INDEXER')
 
 async function calc_batches() {
   const tcp_storage = await fetch(`${TZKT_API}/v1/contracts/${TCP_CONTRACT}/bigmaps/profiles`).then(r => r.json())
