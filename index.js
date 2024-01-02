@@ -17,7 +17,7 @@ import {
 
 /** HELPERS **/
 
-let global_client= null
+let global_client = null
 const debug = util.debuglog('TCP_INDEXER')
 
 async function calc_batches() {
