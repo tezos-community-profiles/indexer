@@ -1,5 +1,6 @@
 import util from 'util'
 import fetch from 'node-fetch'
+import Sentry from '@sentry/node'
 import { bytes2Char } from '@taquito/utils'
 import {
   TZKT_API,
@@ -13,7 +14,7 @@ import {
   get_client,
   get_ipfs_metadata 
 } from './utils.js'
-//import './sentry.js'
+import './sentry.js'
 
 /** HELPERS **/
 
@@ -104,7 +105,7 @@ async function scrape_loop() {
   } catch(e) {
     await client.end()
     console.error(e)
-//    Sentry.captureException(e)
+    Sentry.captureException(e)
   }
   setTimeout(scrape_loop, SCRAPE_INTERVAL)
 }
