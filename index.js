@@ -52,7 +52,7 @@ async function sync_tcp({ client }) {
 /** SCRAPE LOOP **/
 
 async function scrape_loop() {
-  console.log('-------')
+  console.log(`\n--- TCP ${new Date()} ---\n`)
   const client = get_client()
   try {
     await client.connect()
