@@ -8,5 +8,5 @@ CREATE TABLE IF NOT EXISTS profiles (
 /* Config table for storing `last_level_synced` */
 
 CREATE TABLE IF NOT EXISTS config (
-  config json
+  config jsonb
 );

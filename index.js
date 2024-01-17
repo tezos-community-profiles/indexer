@@ -21,10 +21,9 @@ import './sentry.js'
 let global_client = null
 const debug = util.debuglog('TCP_INDEXER')
 
-async function calc_batches() {
-  const tcp_storage = await fetch(`${TZKT_API}/v1/contracts/${TCP_CONTRACT}/bigmaps/profiles`).then(r => r.json())
-  // TODO: Get # of updates since last_level_synced (to calc batches needed) for now we just assume all activeKeys have been updates
-  const num_updated_keys = tcp_storage?.activeKeys 
+async function calc_batches({ bigmap, last_level_synced }) {
+  const updated_keys = await fetch(`${TZKT_API}/v1/bigmaps/updates/count?bigmap=${bigmap}&level.gt=${last_level_synced}`).then(r => r.text())
+  const num_updated_keys = parseInt(updated_keys) 
   const batch_size = BATCH_SIZE
   const num_batches = Math.ceil(num_updated_keys / batch_size)
   const batches = Array.from(new Array(num_batches)).map((_, i) => {
@@ -52,13 +51,13 @@ async function store_profile(profile) {
   `, [profile.address, profile, new Date().getTime()]) 
 }
 
-async function update_key(key) {
+async function handle_update(update) {
   try {
-    const address = key.key
+    const address = update.content.key
     const values = {}
     for (let ikey of INDEX_KEYS) {
-      if (!key.value[ikey]) continue
-      const char = bytes2Char(key.value[ikey])
+      if (!update.content.value[ikey]) continue
+      const char = bytes2Char(update.content.value[ikey])
       const [protocol, hash] = char.split('://')
       const data = await get_ipfs_metadata(hash) // TODO: Support more protocols 
       values[ikey] = data
@@ -71,24 +70,36 @@ async function update_key(key) {
   }
 }
 
-async function fetch_keys_and_update(batch) {
-  const keys = await fetch(`${TZKT_API}/v1/contracts/${TCP_CONTRACT}/bigmaps/profiles/keys?offset=${batch.start}&limit=${batch.end}`).then(r => r.json())
-  const key_updates = keys.map(key => update_key(key))
-  const results = await Promise.allSettled(key_updates)
+async function fetch_keys_and_update({ bigmap, last_level_synced, batch }) {
+  const updates = await fetch(`${TZKT_API}/v1/bigmaps/updates/?bigmap=${bigmap}&level.gt=${last_level_synced}&offset=${batch.start}&limit=${batch.end}`).then(r => r.json())
+  const _updates = updates.map(u => handle_update(u))
+  const results = await Promise.allSettled(_updates)
   return results
 }
 
 /** SYNC TCP **/
 
 async function sync_tcp() {
-  const batches = await calc_batches()
-  const batch_updates = batches.map(b => fetch_keys_and_update(b)) 
+  // TODO: CLEANUP!
+  const head = await fetch(`${TZKT_API}/v1/head`).then(r => r.json())
+  const level = head.level
+  const config = await global_client.query(`select config from config`).then(r => r.rows[0]?.config || {})
+  console.log(config)
+  const tcp_storage = await fetch(`${TZKT_API}/v1/contracts/${TCP_CONTRACT}/storage`).then(r => r.json())
+  const last_level_synced = config[TCP_CONTRACT]?.last_level_synced || 0
+  const bigmap = tcp_storage?.profiles
+  const batches = await calc_batches({ bigmap, last_level_synced })
+  const batch_updates = batches.map(b => fetch_keys_and_update({ batch: b, bigmap, last_level_synced })) 
   const results = await Promise.allSettled(batch_updates)
   const all_res = results.reduce((coll, r) => coll.concat(r.value), [])
   const fulfilled = all_res.filter(r => r.status == 'fulfilled')
   const rejected = all_res.filter(r => r.status == 'rejected')
   console.log(`Successful updates: ${fulfilled.length}`)
   console.log(`Rejected updates: ${rejected.length}`)
+  const config_updates = {}
+  config_updates[TCP_CONTRACT] = {}
+  config_updates[TCP_CONTRACT]['last_level_synced'] = level
+  await global_client.query(`update config set config=$1`, [Object.assign({}, config, config_updates)])
   debug_log_result_maybe(fulfilled, rejected)
 }
 
